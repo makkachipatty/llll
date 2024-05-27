@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Chat App</title>
+  <style>
+    /* ... existing styles ... */
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #1e1e2f;
+      color: #fff;
+      height: 100vh;
+    }
+
+    #messages {
+      list-style-type: none;
+      margin: 20px 0;
+      padding: 0;
+      width: 90%;
+      max-width: 600px;
+      overflow-y: auto;
+      flex: 1;
+      background: #2c2c3c;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #messages li {
+      padding: 12px;
+      background: #3a3a4f;
+      margin-bottom: 10px;
+      border-radius: 20px;
+      transition: background 0.3s;
+    }
+
+    #messages li:hover {
+      background: #4a4a6f;
+    }
+
+    #form {
+      display: flex;
+      width: 90%;
+      max-width: 600px;
+      margin: 20px 0;
+    }
+
+    #input {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 25px;
+      margin-right: 10px;
+      font-size: 16px;
+      background: #3a3a4f;
+      color: #fff;
+      outline: none;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    #input::placeholder {
+      color: #aaa;
+    }
+
+    #send {
+      padding: 0 20px;
+      border: none;
+      border-radius: 25px;
+      background: #5c5cff;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    #send:hover {
+      background: #7a7aff;
+      transform: scale(1.05);
+    }
+
+    #send:active {
+      background: #4a4aff;
+    }
+
+    img {
+      padding-top: 1rem;
+      height: 100px;
+    }
+
+    #messages {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #messages li {
+      white-space: normal;
+      word-wrap: break-word;
+    }
+
+    #messages .user {
+      width: 20rem;
+      align-self: flex-end;
+      background-color: #3a3a4f;
+    }
+
+    #messages .other {
+      width: 20rem;
+      align-self: flex-start;
+      background-color: #59599f;
+    }
+
+    #user-count {
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+    #form {
+      display: flex;
+      width: 90%;
+      max-width: 600px;
+      margin: 20px 0;
+    }
+
+    #input {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 25px;
+      margin-right: 10px;
+      font-size: 16px;
+      background: #3a3a4f;
+      color: #fff;
+      outline: none;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    #input::placeholder {
+      color: #aaa;
+    }
+
+    #send, #send-image {
+      padding: 0 20px;
+      border: none;
+      border-radius: 25px;
+      background: #5c5cff;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      margin-left: 10px;
+    }
+
+    #send:hover, #send-image:hover {
+      background: #7a7aff;
+      transform: scale(1.05);
+    }
+
+    #send:active, #send-image:active {
+      background: #4a4aff;
+    }
+
+    #file-input {
+      display: none;
+    }
+  </style>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <link rel="icon" type="image/x-icon" href="favicon.png">
+</head>
+<body>
+  <div class="heading">
+    <img src="logo.png" alt="">
+  </div>
+  <div id="user-count">Online Users: 0</div>
+  <ul id="messages"></ul>
+  <form id="form" action="">
+    <input id="input" autocomplete="off" placeholder="Type your message here..." />
+    <button id="send">Send</button>
+    <input type="file" id="file-input" accept="image/*" />
+    <button type="button" id="send-image">Send Image</button>
+  </form>
+
+  <div class="box" id="username-dialog" title="">
+    <img src="favicon.png" alt="" style="height:100px;padding-top:0rem">
+    <h3>Enter Your Nickname</h3>
+    <input id="username-input" type="text" placeholder="_ _ _ _ _ _ _ _ _ _ _ _ _ _ _">
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let username;
+
+    $(document).ready(function() {
+        $("#username-dialog").dialog({
+            modal: true,
+            autoOpen: true,
+            closeOnEscape: false,
+            position: { my: "center", at: "center", of: window },
+            open: function(event, ui) {
+                $(".ui-dialog-titlebar-close", ui.dialog | ui).hide();
+            },
+            buttons: {
+                Ok: function() {
+                    username = $("#username-input").val();
+                    if (username === "") {
+                        alert("Throw your nickname into the ring, and then the fun begins❗");
+                    } else {
+                        $(this).dialog("close");
+                    }
+                }
+            },
+            beforeClose: function(event, ui) {
+                if (username === "") {
+                    alert("Throw your nickname into the ring, and then the fun begins❗");
+                    return false;
+                }
+            }
+        });
+    });
+    
+
+    const socket = io();
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const messages = document.getElementById('messages');
+    const userCount = document.getElementById('user-count');
+    const fileInput = document.getElementById('file-input');
+    const sendImageButton = document.getElementById('send-image');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (input.value) {
+        socket.emit('chat message', { username, message: input.value });
+        input.value = '';
+      }
+    });
+
+    socket.on('chat message', function(msg) {
+      const item = document.createElement('li');
+      item.className = username === msg.username ? 'user' : 'other';
+      item.textContent = msg.username + '⚡ ' + msg.message;
+      messages.appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    socket.on('user count', function(count) {
+      userCount.textContent = 'Online Users: ' + count;
+    });
+
+    sendImageButton.addEventListener('click', function() {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function() {
+      if (fileInput.files.length > 0) {
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+        formData.append('username', username);
+
+        fetch('/upload', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          fileInput.value = '';
+        })
+        .catch(error => {
+          console.error('Error uploading image:', error);
+        });
+      }
+    });
+
+    socket.on('chat image', function(msg) {
+      const item = document.createElement('li');
+      item.className = username === msg.username ? 'user' : 'other';
+      const img = document.createElement('img');
+      img.src = msg.imageUrl;
+      img.style.maxWidth = '100%';
+      img.alt = 'Chat Image';
+      item.appendChild(document.createTextNode(msg.username + '⚡ '));
+      item.appendChild(img);
+      messages.appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+  </script>
+</body>
+</html>
